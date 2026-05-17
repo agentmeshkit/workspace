@@ -3,7 +3,8 @@
 Workspace utilities for agent sessions.
 
 The root export is browser-safe and contains types plus file index helpers.
-Node file-system operations are exported from `@agentmeshkit/workspace/node`.
+Node file-system operations are exported only from
+`@agentmeshkit/workspace/node`.
 
 ## Backend Example
 
@@ -80,3 +81,24 @@ import { flattenWorkspaceFiles, searchWorkspaceFiles } from '@agentmeshkit/works
 const files = flattenWorkspaceFiles(tree);
 const matches = searchWorkspaceFiles(files, query, { maxResults: 10 });
 ```
+
+## Search Ranking
+
+`searchWorkspaceFiles` is dependency-free and safe to run in browsers. Matching
+is case-insensitive and ranked in this order:
+
+1. Basename prefix, for example `search.ts` for `sea`.
+2. Basename contains, for example `research.md` for `search`.
+3. Full path contains, for example `src/search/index.ts` for `search`.
+
+Results keep their input order within the same rank, and `maxResults` is applied
+after ranking. Empty queries return the first `maxResults` entries without
+ranking.
+
+## Node/Browser Split
+
+Use `@agentmeshkit/workspace` or `@agentmeshkit/workspace/browser` in frontend
+code. These exports do not import `node:fs`, `node:path`, or other Node built-ins.
+
+Use `@agentmeshkit/workspace/node` for filesystem work such as creating session
+workspaces, listing trees from disk, and writing attachments.

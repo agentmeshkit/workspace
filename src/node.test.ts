@@ -103,6 +103,26 @@ describe('listWorkspaceTree and search helpers', () => {
 
     expect(flattenWorkspaceFilePaths(tree, { includeHidden: true })).toEqual(['.env']);
   });
+
+  it('skips symlinks by default and refuses followed symlinks outside the workspace', async () => {
+    const workspace = await createSessionWorkspace({ root: tmpRoot, sessionId: 'tree-symlink' });
+    const inside = path.join(workspace.path, 'actual');
+    const outside = path.join(tmpRoot, 'outside');
+
+    await fsp.mkdir(inside);
+    await fsp.mkdir(outside);
+    await fsp.writeFile(path.join(inside, 'inside.txt'), 'inside\n');
+    await fsp.writeFile(path.join(outside, 'outside.txt'), 'outside\n');
+    await fsp.symlink(inside, path.join(workspace.path, 'inside-link'));
+    await fsp.symlink(outside, path.join(workspace.path, 'outside-link'));
+
+    expect(flattenWorkspaceFilePaths(await listWorkspaceTree(workspace))).toEqual([
+      'actual/inside.txt',
+    ]);
+    expect(
+      flattenWorkspaceFilePaths(await listWorkspaceTree(workspace, { followSymlinks: true })),
+    ).toEqual(['actual/inside.txt', 'inside-link/inside.txt']);
+  });
 });
 
 describe('attachments', () => {

@@ -23,6 +23,31 @@ function comparePath(a: string, b: string): number {
   return 0;
 }
 
+function basenameOf(path: string): string {
+  const normalizedPath = path.replaceAll('\\', '/');
+  return normalizedPath.slice(normalizedPath.lastIndexOf('/') + 1);
+}
+
+function normalizeSearchText(value: string): string {
+  return value.replaceAll('\\', '/').toLowerCase();
+}
+
+function normalizeMaxResults(maxResults: number | undefined): number {
+  if (maxResults === undefined) return 10;
+  if (!Number.isFinite(maxResults)) return 0;
+  return Math.max(0, Math.floor(maxResults));
+}
+
+function rankWorkspacePath(path: string, normalizedQuery: string): number | null {
+  const normalizedPath = normalizeSearchText(path);
+  const basename = basenameOf(normalizedPath);
+
+  if (basename.startsWith(normalizedQuery)) return 0;
+  if (basename.includes(normalizedQuery)) return 1;
+  if (normalizedPath.includes(normalizedQuery)) return 2;
+  return null;
+}
+
 export function flattenWorkspaceFiles(
   tree: WorkspaceTreeNode | null | undefined,
   options: FlattenWorkspaceFilesOptions = {},
@@ -75,8 +100,8 @@ export function searchWorkspaceFiles(
   query: string,
   options: number | SearchWorkspaceFilesOptions = {},
 ): string[] | WorkspaceFileIndexEntry[] {
-  const maxResults = typeof options === 'number' ? options : options.maxResults ?? 10;
-  const normalizedQuery = query.trim().toLowerCase();
+  const maxResults = normalizeMaxResults(typeof options === 'number' ? options : options.maxResults);
+  const normalizedQuery = normalizeSearchText(query.trim());
   const entries = [...files];
 
   if (!normalizedQuery) {
@@ -84,10 +109,20 @@ export function searchWorkspaceFiles(
   }
 
   return entries
-    .filter((entry) => {
+    .map((entry, index) => {
       const path = typeof entry === 'string' ? entry : entry.path;
-      return path.toLowerCase().includes(normalizedQuery);
+      return {
+        entry,
+        index,
+        rank: rankWorkspacePath(path, normalizedQuery),
+      };
     })
+    .filter((candidate) => candidate.rank !== null)
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return (a.rank ?? 0) - (b.rank ?? 0);
+      return a.index - b.index;
+    })
+    .map((candidate) => candidate.entry)
     .slice(0, maxResults) as string[] | WorkspaceFileIndexEntry[];
 }
 

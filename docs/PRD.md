@@ -76,12 +76,22 @@ const suggestions = searchWorkspaceFiles(files, query);
 - `flattenWorkspaceFiles(tree)` returns sorted file index entries; directories
   are excluded. `flattenWorkspaceFilePaths(tree)` returns just relative paths.
 - `searchWorkspaceFiles(files, query)` works on either string paths or file index
-  entries, performs case-insensitive substring matching, and caps results.
+  entries, performs case-insensitive matching, ranks basename prefixes before
+  basename contains before path contains, and caps results after ranking.
 - `writeAttachment(workspace, fileLike)` writes to `attachments/`, sanitizes
   names, deduplicates collisions with `-1`, `-2`, and returns JSON-safe
   `AttachmentMetadata`.
 - `normalizeAttachmentInfo(input)` converts backend attachment metadata into the
   compact frontend shape used for attachment chips.
+
+## Runtime Split
+
+- `@agentmeshkit/workspace` and `@agentmeshkit/workspace/browser` are
+  browser-safe. They expose types, tree flattening, search, and attachment
+  metadata normalization without importing Node built-ins.
+- `@agentmeshkit/workspace/node` is the only entry point for Node IO helpers:
+  session directory creation, safe joins, tree listing from disk, and attachment
+  writes.
 
 ## Acceptance Criteria
 
