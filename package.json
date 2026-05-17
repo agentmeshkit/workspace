@@ -1,0 +1,26 @@
+{
+  "name": "@agentmeshkit/workspace",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "description": "Workspace utilities for agent sessions.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
+
