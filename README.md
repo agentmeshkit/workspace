@@ -2,9 +2,44 @@
 
 Workspace utilities for agent sessions.
 
-The root export is browser-safe and contains types plus file index helpers.
-Node file-system operations are exported only from
-`@agentmeshkit/workspace/node`.
+Use this package to create per-session workspaces, safely accept uploaded
+attachments, list files for UI/agent context, and search file paths for
+composer mentions.
+
+## Install
+
+```sh
+pnpm add @agentmeshkit/workspace
+```
+
+## Import Surfaces
+
+`@agentmeshkit/workspace` is browser-safe. It exports types, attachment metadata
+normalization, tree flattening, and search helpers. It does not import
+`node:fs`, `node:path`, or other Node built-ins.
+
+```ts
+import {
+  flattenWorkspaceFiles,
+  flattenWorkspaceFilePaths,
+  normalizeAttachmentInfo,
+  searchWorkspaceFiles,
+  type WorkspaceTreeNode,
+} from '@agentmeshkit/workspace';
+```
+
+`@agentmeshkit/workspace/node` is backend-only. Use it for filesystem work:
+creating a session workspace, validating joined paths, listing a tree from disk,
+and writing attachments.
+
+```ts
+import {
+  createSessionWorkspace,
+  listWorkspaceTree,
+  safeJoin,
+  writeAttachment,
+} from '@agentmeshkit/workspace/node';
+```
 
 ## Backend Example
 
@@ -34,8 +69,19 @@ return {
 };
 ```
 
-`writeAttachment` writes to `attachments/`, sanitizes upload names, deduplicates
-filename collisions, rejects traversal, and returns JSON-safe metadata:
+`root` must be absolute. `sessionId` must be one safe path segment: no slashes,
+backslashes, absolute paths, `.`/`..`, or null bytes. By default the workspace is
+created at `<root>/<sessionId>/workspace`.
+
+Use `safeJoin(root, ...segments)` when joining untrusted relative path segments
+inside a known absolute root. It rejects absolute segments, null bytes, and
+resolved paths outside the root.
+
+## Attachment Writing
+
+`writeAttachment` writes to `attachments/` by default, sanitizes upload names,
+deduplicates filename collisions, rejects traversal, enforces a default 10 MiB
+limit, and returns JSON-safe metadata:
 
 ```ts
 {
@@ -48,7 +94,9 @@ filename collisions, rejects traversal, and returns JSON-safe metadata:
 }
 ```
 
-Policy hooks can enforce size and extension limits:
+Supported file-like inputs include a Node `Readable`, an async iterable of
+`Uint8Array`, `Uint8Array`/`ArrayBuffer` data, or an object with
+`arrayBuffer()`. Policy hooks can enforce size, extension, and custom checks:
 
 ```ts
 await writeAttachment(workspace, file, {
@@ -59,7 +107,25 @@ await writeAttachment(workspace, file, {
 });
 ```
 
-## Frontend Helper Example
+Pass returned `relPath` to agents or UIs. Do not expose or persist absolute
+server paths.
+
+## Tree Listing
+
+```ts
+const tree = await listWorkspaceTree(workspace, {
+  maxDepth: 5,
+  ignoredNames: ['node_modules', '.git'],
+});
+```
+
+`listWorkspaceTree` returns a deterministic `WorkspaceTreeNode` rooted at the
+workspace directory. Paths are POSIX-style relative paths. Hidden files are
+excluded by default, `node_modules` is ignored by default, and symlinks are not
+followed unless `followSymlinks: true`. Symlinks that resolve outside the
+workspace are ignored.
+
+## Browser Helpers
 
 ```ts
 import {
@@ -82,6 +148,10 @@ const files = flattenWorkspaceFiles(tree);
 const matches = searchWorkspaceFiles(files, query, { maxResults: 10 });
 ```
 
+`flattenWorkspaceFiles` returns sorted file entries with `name`, relative
+`path`, `size`, and `mtimeMs`. `flattenWorkspaceFilePaths` returns only relative
+path strings. Hidden paths are excluded unless `includeHidden: true`.
+
 ## Search Ranking
 
 `searchWorkspaceFiles` is dependency-free and safe to run in browsers. Matching
@@ -102,3 +172,8 @@ code. These exports do not import `node:fs`, `node:path`, or other Node built-in
 
 Use `@agentmeshkit/workspace/node` for filesystem work such as creating session
 workspaces, listing trees from disk, and writing attachments.
+
+## AI Agent Integration
+
+See [`docs/AI_AGENT_INTEGRATION.md`](docs/AI_AGENT_INTEGRATION.md) for a compact
+guide intended to be copied into agent/tool integration context.

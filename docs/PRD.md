@@ -25,6 +25,8 @@ mention indexing inside the app. That logic should become reusable.
 - Produce stable file tree snapshots for UI consumption.
 - Provide small search helpers for filename/path mentions.
 - Keep storage local-file based for the first release.
+- Document a clear human and agent integration contract for import surfaces,
+  safe relative paths, attachment intake, tree listing, and search.
 
 ## Non-Goals
 
@@ -35,7 +37,7 @@ mention indexing inside the app. That logic should become reusable.
 
 ## MVP Scope
 
-- `createSessionWorkspace(root, sessionId)`.
+- `createSessionWorkspace({ root, sessionId })`.
 - `writeAttachment(workspace, fileLike)`.
 - `listWorkspaceTree(workspace)`.
 - `flattenWorkspaceFiles(tree)` and `searchWorkspaceFiles(files, query)`.
@@ -72,15 +74,16 @@ const suggestions = searchWorkspaceFiles(files, query);
 - `listWorkspaceTree(workspace)` returns a deterministic `WorkspaceTreeNode`
   rooted at the workspace directory with POSIX-style relative `path` values.
   Hidden files and `node_modules` are excluded by default; `includeHidden` and
-  `ignoredNames` are configurable.
+  `ignoredNames` are configurable. Symlinks are skipped by default and symlinks
+  resolving outside the workspace are ignored.
 - `flattenWorkspaceFiles(tree)` returns sorted file index entries; directories
   are excluded. `flattenWorkspaceFilePaths(tree)` returns just relative paths.
 - `searchWorkspaceFiles(files, query)` works on either string paths or file index
   entries, performs case-insensitive matching, ranks basename prefixes before
   basename contains before path contains, and caps results after ranking.
 - `writeAttachment(workspace, fileLike)` writes to `attachments/`, sanitizes
-  names, deduplicates collisions with `-1`, `-2`, and returns JSON-safe
-  `AttachmentMetadata`.
+  names, deduplicates collisions with `-1`, `-2`, enforces a default 10 MiB max
+  size, and returns JSON-safe `AttachmentMetadata`.
 - `normalizeAttachmentInfo(input)` converts backend attachment metadata into the
   compact frontend shape used for attachment chips.
 
@@ -100,6 +103,9 @@ const suggestions = searchWorkspaceFiles(files, query);
 - Search helpers work in browser-safe code.
 - Attachment metadata can round-trip through JSON.
 - Fixtures cover nested folders, hidden files, and duplicate filenames.
+- README documents the browser/node split and common integration flows.
+- `docs/AI_AGENT_INTEGRATION.md` provides compact guidance suitable for agent
+  context or tool implementation prompts.
 
 ## Milestones
 
